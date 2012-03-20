@@ -141,15 +141,23 @@ fi
 
 # Checkout nova
 if [ ! -d $TOP_DIR/nova ]; then
-    env GIT_SSL_NO_VERIFY=true git clone $NOVA_REPO
-    cd $TOP_DIR/nova
-    git checkout $NOVA_BRANCH
+
+    wget https://github.com/openstack/nova/zipball/master --no-check-certificate
+    unzip -o master -d ./nova_tmp
+    mv ./nova_tmp/* ./nova
 fi
+cd $TOP_DIR/nova
 
 # Install plugins
-cp -pr $TOP_DIR/nova/plugins/xenserver/xenapi/etc/xapi.d /etc/
-chmod a+x /etc/xapi.d/plugins/*
-yum --enablerepo=base install -y parted
+XAPI_PLUGIN_DIR_DEB=/usr/lib/xcp/plugins/
+XAPI_PLUGIN_DIR=/etc/xapi.d/plugins/
+if [ ! -d $XAPI_PLUGIN_DIR ]; then
+    XAPI_PLUGIN_DIR=$XAPI_PLUGIN_DIR_DEB
+fi
+
+cp -pr $TOP_DIR/nova/plugins/xenserver/xenapi/etc/xapi.d/plugins/* $XAPI_PLUGIN_DIR
+chmod a+x ${XAPI_PLUGIN_DIR}*
+# TODO - why??? yum --enablerepo=base install -y parted
 mkdir -p /boot/guest
 
 # Shutdown previous runs
