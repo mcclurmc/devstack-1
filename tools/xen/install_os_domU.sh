@@ -209,8 +209,29 @@ $TOP_DIR/build_xva.sh "$GUEST_NAME"
 
 xe vm-start vm="$GUEST_NAME"
 
+function find_ip_by_name() {
+  local guest_name="$1"
+  local max_tries="$2"
+  local period="$3"
+  i=0
+  while [ $i -lt $max_tries ]
+  do
+    ((i++))
+    devstackip=$(xe vm-list --minimal \
+                 name-label=$guest_name \
+                 params=networks | sed -ne 's,^.*3/ip: \([0-9.]*\).*$,\1,p')
+    if [ -z "$devstackip" ]
+    then
+      sleep $period
+    else
+      echo $devstackip
+      break
+    fi
+  done
+}
+
 if [ $PUB_IP == "dhcp" ]; then
-    PUB_IP=$(xe_min vm-list  name-label=$GUEST_NAME params=networks |  sed -ne 's,^.*3/ip: \([0-9.]*\).*$,\1,p')
+    PUB_IP=$(find_ip_by_name $GUEST_NAME 30 2)
 fi
 
 # If we have copied our ssh credentials, use ssh to monitor while the installation runs
