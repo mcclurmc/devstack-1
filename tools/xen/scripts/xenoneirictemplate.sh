@@ -15,7 +15,7 @@ if [[ -z $LENNY ]] ; then
     exit 1
 fi
 
-distro="Ubuntu 11.10"
+distro="Ubuntu 11.10 for DevStack"
 arches=("32-bit" "64-bit")
 
 preseedurl=${1:-"http://images.ansolabs.com/devstackubuntupreseed.cfg"}

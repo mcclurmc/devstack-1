@@ -176,13 +176,14 @@ if [ -n "$templateuuid" ]
 then
         vm_uuid=$(xe vm-install template="$TNAME" new-name-label="$GUEST_NAME")
 else
-    template=$(xe_min template-list name-label="Ubuntu 11.10 (64-bit)")
+    template=$(xe_min template-list name-label="Ubuntu 11.10 for DevStack (64-bit)")
     if [ -z "$template" ]
     then
-        cp $TOP_DIR/devstackubuntupreseed.cfg /opt/xensource/www/
         $TOP_DIR/scripts/xenoneirictemplate.sh "${HOST_IP}/devstackubuntupreseed.cfg"
     fi
-    $TOP_DIR/scripts/install-os-vpx.sh -t "Ubuntu 11.10 (64-bit)" -v $VM_BR -m $MGT_BR -p $PUB_BR -l $GUEST_NAME -r $OSDOMU_MEM_MB -k "flat_network_bridge=${VM_BR}"
+    # always update the preseed file, incase we have a newer one
+    cp -f $TOP_DIR/devstackubuntupreseed.cfg /opt/xensource/www/
+    $TOP_DIR/scripts/install-os-vpx.sh -t "Ubuntu 11.10 for DevStack (64-bit)" -v $VM_BR -m $MGT_BR -p $PUB_BR -l $GUEST_NAME -r $OSDOMU_MEM_MB -k "flat_network_bridge=${VM_BR}"
 
     # Wait for install to finish
     while true
