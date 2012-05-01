@@ -18,12 +18,12 @@
 #
 
 # By default remove all data
-REMOVE_DATA=${REMOVE_DATA:-true}
+REMOVE_DATA=${REMOVE_DATA:-"true"}
 
 # By default don't remove all templates
-REMOVE_TEMPLATES=${REMOVE_TEMPLATES:-false}
+REMOVE_TEMPLATES=${REMOVE_TEMPLATES:-"false"}
 
-set -eu
+set -eux
 
 xe_min()
 {
@@ -39,7 +39,7 @@ destroy_vdi()
   local dev=$(xe_min vbd-list uuid=$vbd_uuid params=userdevice)
   local vdi_uuid=$(xe_min vbd-list uuid=$vbd_uuid params=vdi-uuid)
 
-  if [ "$type" = 'Disk' ] && [ "$dev" != 'xvda' ] && [ "$dev" != '0' ]
+  if [ "$type" == 'Disk' ] && [ "$dev" != 'xvda' ] && [ "$dev" != '0' ]
   then
     echo -n "Destroying data disk... "
     xe vdi-destroy uuid=$vdi_uuid
@@ -59,7 +59,7 @@ uninstall()
     echo "done."
   fi
 
-  if [ $REMOVE_DATA ]
+  if [ "$REMOVE_DATA" == "true" ]
   then
     for v in $(xe_min vbd-list vm-uuid=$vm_uuid | sed -e 's/,/ /g')
     do
@@ -76,7 +76,7 @@ uninstall_template()
 {
   local vm_uuid="$1"
 
-  if [ $REMOVE_DATA ]
+  if [ "$REMOVE_DATA" == "true" ]
   then
     for v in $(xe_min vbd-list vm-uuid=$vm_uuid | sed -e 's/,/ /g')
     do
@@ -95,7 +95,7 @@ do
   uninstall "$u"
 done
 
-if [ $REMOVE_TEMPLATES ]
+if [ "$REMOVE_TEMPLATES" == "true" ]
 then
   for u in $(xe_min template-list other-config:os-vpx=true | sed -e 's/,/ /g')
   do

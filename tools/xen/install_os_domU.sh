@@ -43,8 +43,10 @@ chmod a+x /etc/xapi.d/plugins/*
 mkdir -p /boot/guest
 
 GUEST_NAME=${GUEST_NAME:-"DevStackOSDomU"}
-SNAME="ubuntusnapshot"
-TNAME="ubuntuready"
+SNAME_BASE="base_snapshot"
+TNAME_BASE="devstack_base_template_folsom_11.10"
+SNAME_PREPARED="prepared_snapshot"
+TNAME_PREPARED="devstack_prepared_template_folsom_11.10"
 
 # Helper to create networks
 # Uses echo trickery to return network uuid
@@ -171,19 +173,17 @@ if [ -z $PUB_BR ]; then
     PUB_BR=$(xe_min network-list  uuid=$PUB_NET params=bridge)
 fi
 
-templateuuid=$(xe template-list name-label="$TNAME")
-if [ -n "$templateuuid" ]
-then
-        vm_uuid=$(xe vm-install template="$TNAME" new-name-label="$GUEST_NAME")
-else
-    template=$(xe_min template-list name-label="Ubuntu 11.10 for DevStack (64-bit)")
+templateuuid=$(xe template-list name-label="$TNAME_BASE")
+if [ -z "$templateuuid" ]
+    templatename="Ubuntu 11.10 for DevStack (64-bit)"
+    template=$(xe_min template-list name-label="$templatename")
     if [ -z "$template" ]
     then
         $TOP_DIR/scripts/xenoneirictemplate.sh "${HOST_IP}/devstackubuntupreseed.cfg"
     fi
     # always update the preseed file, incase we have a newer one
     cp -f $TOP_DIR/devstackubuntupreseed.cfg /opt/xensource/www/
-    $TOP_DIR/scripts/install-os-vpx.sh -t "Ubuntu 11.10 for DevStack (64-bit)" -v $VM_BR -m $MGT_BR -p $PUB_BR -l $GUEST_NAME -r $OSDOMU_MEM_MB -k "flat_network_bridge=${VM_BR}"
+    $TOP_DIR/scripts/install-os-vpx.sh -t "$templatename" -v $VM_BR -m $MGT_BR -p $PUB_BR -l $GUEST_NAME -r $OSDOMU_MEM_MB -k "flat_network_bridge=${VM_BR}"
 
     # Wait for install to finish
     while true
@@ -194,7 +194,7 @@ else
             break
         else
             echo "Waiting for "$GUEST_NAME" to finish installation..."
-            sleep 30
+            sleep 20
         fi
     done
 
@@ -202,8 +202,37 @@ else
     xe vm-param-set actions-after-reboot=Restart uuid="$vm_uuid"
 
     # Make template from VM
-    snuuid=$(xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME")
-    template_uuid=$(xe snapshot-clone uuid=$snuuid new-name-label="$TNAME")
+    snuuid=$(xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_BASE")
+    template_uuid=$(xe snapshot-clone uuid=$snuuid new-name-label="$TNAME_BASE")
+fi
+
+templateuuid=$(xe template-list name-label="$TNAME_PREPARED")
+if [ -z "$templateuuid" ]
+then
+    # Install XenServer tools, and other such things
+    $TOP_DIR/prepare_guest_template.sh "$GUEST_NAME"
+
+    # start the VM to run the prepare steps
+    xe vm-start vm="$GUEST_NAME"
+
+    # Wait for prep script to finish and shutdown system
+    while true
+    do
+        state=$(xe_min vm-list name-label="$GUEST_NAME" power-state=halted)
+        if [ -n "$state" ]
+        then
+            break
+        else
+            echo "Waiting for "$GUEST_NAME" to finish preperation..."
+            sleep 20
+        fi
+    done
+
+    # Make template from VM
+    snuuid=$(xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_PREPARED")
+    template_uuid=$(xe snapshot-clone uuid=$snuuid new-name-label="$TNAME_PREPARED")
+else
+    vm_uuid=$(xe vm-install template="$TNAME_PREPARED" new-name-label="$GUEST_NAME")
 fi
 
 $TOP_DIR/build_xva.sh "$GUEST_NAME"
@@ -212,12 +241,9 @@ xe vm-start vm="$GUEST_NAME"
 
 function find_ip_by_name() {
   local guest_name="$1"
-  local max_tries="$2"
-  local period="$3"
-  i=0
-  while [ $i -lt $max_tries ]
+  local period="$2"
+  while true
   do
-    ((i++))
     devstackip=$(xe vm-list --minimal \
                  name-label=$guest_name \
                  params=networks | sed -ne 's,^.*3/ip: \([0-9.]*\).*$,\1,p')
@@ -232,11 +258,12 @@ function find_ip_by_name() {
 }
 
 if [ $PUB_IP == "dhcp" ]; then
-    PUB_IP=$(find_ip_by_name $GUEST_NAME 30 2)
+    PUB_IP=$(find_ip_by_name $GUEST_NAME 10)
 fi
 
 # If we have copied our ssh credentials, use ssh to monitor while the installation runs
 WAIT_TILL_LAUNCH=${WAIT_TILL_LAUNCH:-1}
+COPYENV=${COPYENV:-1}
 if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" = "1" ]; then
     # Done creating the container, let's tail the log
     echo

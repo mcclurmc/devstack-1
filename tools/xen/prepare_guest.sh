@@ -1,6 +1,8 @@
 #!/bin/bash
 
 set -x
+# Echo commands
+set -o xtrace
 
 # Configurable nuggets
 GUEST_PASSWORD=${GUEST_PASSWORD:-secrete}
@@ -68,3 +70,11 @@ if [ "$DO_TGZ" = "1" ]; then
     rm -f stage.tgz
     tar cfz stage.tgz stage
 fi
+
+# remove self from local.rc
+rm -rf /etc/rc.local
+mv /etc/rc.local.preparebackup /etc/rc.local
+cp $STAGING_DIR/etc/rc.local $STAGING_DIR/etc/rc.local.backup
+
+# shutdown to notify we are done
+shutdown -h now
