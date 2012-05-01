@@ -271,6 +271,10 @@ if [ $PUB_IP == "dhcp" ]; then
     PUB_IP=$(find_ip_by_name $GUEST_NAME 10)
 fi
 
+function ssh_no_check() {
+    ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$@"
+}
+
 # If we have copied our ssh credentials, use ssh to monitor while the installation runs
 WAIT_TILL_LAUNCH=${WAIT_TILL_LAUNCH:-1}
 COPYENV=${COPYENV:-1}
@@ -286,13 +290,11 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     echo
     echo "Just CTRL-C at any time to stop tailing."
 
-    # TODO(johngar) - trying without for CI tests set +o xtrace
-
-    while ! ssh -q stack@$PUB_IP "[ -e run.sh.log ]"; do
-      sleep 5
+    while ! ssh_no_check -q stack@$PUB_IP "[ -e run.sh.log ]"; do
+      sleep 10
     done
 
-    ssh stack@$PUB_IP 'tail -f run.sh.log' &
+    ssh_no_check stack@$PUB_IP 'tail -f run.sh.log' &
 
     TAIL_PID=$!
 
@@ -305,13 +307,13 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     trap kill_tail SIGINT
 
     echo "Waiting stack.sh to finish..."
-    while ! ssh -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"; do
-        sleep 5
+    while ! ssh_no_check -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"; do
+        sleep 10
     done
 
     kill $TAIL_PID
 
-    if ssh -q stack@$PUB_IP "grep -q 'stack.sh failed' run.sh.log"; then
+    if ssh_no_check -q stack@$PUB_IP "grep -q 'stack.sh failed' run.sh.log"; then
         exit 1
     fi
     echo ""
