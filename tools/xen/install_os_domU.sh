@@ -173,6 +173,7 @@ if [ -z $PUB_BR ]; then
     PUB_BR=$(xe_min network-list  uuid=$PUB_NET params=bridge)
 fi
 
+vm_uuid=""
 templateuuid=$(xe template-list name-label="$TNAME_BASE")
 if [ -z "$templateuuid" ]
 then
@@ -204,12 +205,18 @@ then
 
     # Make template from VM
     snuuid=$(xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_BASE")
-    template_uuid=$(xe snapshot-clone uuid=$snuuid new-name-label="$TNAME_BASE")
+    xe snapshot-clone uuid=$snuuid new-name-label="$TNAME_BASE"
 fi
 
 templateuuid=$(xe template-list name-label="$TNAME_PREPARED")
 if [ -z "$templateuuid" ]
 then
+    # if we don't already have a VM at this point, we need to make one
+    if [ -z "$vm_uuid" ]
+    then
+        vm_uuid=$(xe vm-install template="$TNAME_BASE" new-name-label="$GUEST_NAME")
+    fi
+
     # Install XenServer tools, and other such things
     $TOP_DIR/prepare_guest_template.sh "$GUEST_NAME"
 
@@ -231,7 +238,7 @@ then
 
     # Make template from VM
     snuuid=$(xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_PREPARED")
-    template_uuid=$(xe snapshot-clone uuid=$snuuid new-name-label="$TNAME_PREPARED")
+    xe snapshot-clone uuid=$snuuid new-name-label="$TNAME_PREPARED"
 else
     vm_uuid=$(xe vm-install template="$TNAME_PREPARED" new-name-label="$GUEST_NAME")
 fi
