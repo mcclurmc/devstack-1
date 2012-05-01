@@ -307,6 +307,10 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     trap kill_tail SIGINT
 
     echo "Waiting stack.sh to finish..."
+
+    # no need to output the commands now
+    set +o xtrace
+
     while ! ssh_no_check -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"; do
         sleep 10
     done
