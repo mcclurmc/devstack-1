@@ -175,6 +175,7 @@ fi
 
 templateuuid=$(xe template-list name-label="$TNAME_BASE")
 if [ -z "$templateuuid" ]
+then
     templatename="Ubuntu 11.10 for DevStack (64-bit)"
     template=$(xe_min template-list name-label="$templatename")
     if [ -z "$template" ]
