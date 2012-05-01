@@ -17,11 +17,11 @@
 #    under the License.
 #
 
-remove_data=
-if [ "$1" = "--remove-data" ]
-then
-  remove_data=1
-fi
+# By default remove all data
+REMOVE_DATA=${REMOVE_DATA:-true}
+
+# By default don't remove all templates
+REMOVE_TEMPLATES=${REMOVE_TEMPLATES:-false}
 
 set -eu
 
@@ -59,7 +59,7 @@ uninstall()
     echo "done."
   fi
 
-  if [ "$remove_data" = "1" ]
+  if [ $REMOVE_DATA ]
   then
     for v in $(xe_min vbd-list vm-uuid=$vm_uuid | sed -e 's/,/ /g')
     do
@@ -76,7 +76,7 @@ uninstall_template()
 {
   local vm_uuid="$1"
 
-  if [ "$remove_data" = "1" ]
+  if [ $REMOVE_DATA ]
   then
     for v in $(xe_min vbd-list vm-uuid=$vm_uuid | sed -e 's/,/ /g')
     do
@@ -95,7 +95,10 @@ do
   uninstall "$u"
 done
 
-for u in $(xe_min template-list other-config:os-vpx=true | sed -e 's/,/ /g')
-do
-  uninstall_template "$u"
-done
+if [ $REMOVE_TEMPLATES ]
+then
+  for u in $(xe_min template-list other-config:os-vpx=true | sed -e 's/,/ /g')
+  do
+    uninstall_template "$u"
+  done
+fi
