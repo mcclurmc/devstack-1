@@ -221,9 +221,6 @@ then
     # Install XenServer tools, and other such things
     $TOP_DIR/prepare_guest_template.sh "$GUEST_NAME"
 
-    # Before we start up the VM, take a snapshot
-    xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_READY"
-
     # start the VM to run the prepare steps
     xe vm-start vm="$GUEST_NAME"
 
@@ -249,6 +246,7 @@ fi
 
 $TOP_DIR/build_xva.sh "$GUEST_NAME"
 
+xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_READY"
 xe vm-start vm="$GUEST_NAME"
 
 if [ $PUB_IP == "dhcp" ]; then
