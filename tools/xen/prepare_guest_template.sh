@@ -55,8 +55,9 @@ if [ ! -d $STAGING_DIR/etc ]; then
     exit 1
 fi
 
-# Copy over prepare_guest
-cp $TOP_DIR/prepare_guest.sh $STAGING_DIR/opt/stack/
+# Copy prepare_guest.sh to VM
+mkdir -p $STAGING_DIR/opt/stack/
+cp $TOP_DIR/prepare_guest.sh $STAGING_DIR/opt/stack/prepare_guest.sh
 
 # backup rc.local
 cp $STAGING_DIR/etc/rc.local $STAGING_DIR/etc/rc.local.preparebackup
