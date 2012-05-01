@@ -47,6 +47,7 @@ SNAME_BASE="base_snapshot"
 TNAME_BASE="devstack_base_template_folsom_11.10"
 SNAME_PREPARED="prepared_snapshot"
 TNAME_PREPARED="devstack_prepared_template_folsom_11.10"
+SNAME_READY="before first boot"
 
 # Helper to create networks
 # Uses echo trickery to return network uuid
@@ -220,6 +221,9 @@ then
     # Install XenServer tools, and other such things
     $TOP_DIR/prepare_guest_template.sh "$GUEST_NAME"
 
+    # Before we start up the VM, take a snapshot
+    xe vm-snapshot vm="$GUEST_NAME" new-name-label="$SNAME_READY"
+
     # start the VM to run the prepare steps
     xe vm-start vm="$GUEST_NAME"
 
@@ -247,26 +251,9 @@ $TOP_DIR/build_xva.sh "$GUEST_NAME"
 
 xe vm-start vm="$GUEST_NAME"
 
-function find_ip_by_name() {
-  local guest_name="$1"
-  local period="$2"
-  while true
-  do
-    devstackip=$(xe vm-list --minimal \
-                 name-label=$guest_name \
-                 params=networks | sed -ne 's,^.*3/ip: \([0-9.]*\).*$,\1,p')
-    if [ -z "$devstackip" ]
-    then
-      sleep $period
-    else
-      echo $devstackip
-      break
-    fi
-  done
-}
-
 if [ $PUB_IP == "dhcp" ]; then
-    PUB_IP=$(find_ip_by_name $GUEST_NAME 10)
+    PUB_IP=$(xe vm-list --minimal name-label=$guest_name \
+                 params=networks | sed -ne 's,^.*3/ip: \([0-9.]*\).*$,\1,p')
 fi
 
 # If we have copied our ssh credentials, use ssh to monitor while the installation runs
@@ -284,10 +271,10 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     echo
     echo "Just CTRL-C at any time to stop tailing."
 
-    set +o xtrace
+    # TODO(johngar) - trying without for CI tests set +o xtrace
 
     while ! ssh -q stack@$PUB_IP "[ -e run.sh.log ]"; do
-      sleep 1
+      sleep 5
     done
 
     ssh stack@$PUB_IP 'tail -f run.sh.log' &
@@ -303,8 +290,8 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     trap kill_tail SIGINT
 
     echo "Waiting stack.sh to finish..."
-    while ! ssh -q stack@$PUB_IP "grep -q 'stack.sh completed in' run.sh.log"; do
-        sleep 1
+    while ! ssh -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"; do
+        sleep 5
     done
 
     kill $TAIL_PID
