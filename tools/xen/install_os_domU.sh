@@ -270,6 +270,7 @@ function find_ip_by_name() {
 if [ $PUB_IP == "dhcp" ]; then
     PUB_IP=$(find_ip_by_name $GUEST_NAME 10)
 fi
+export OPENSTACK_GUEST_IP=$PUB_IP
 
 function ssh_no_check() {
     ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$@"
@@ -336,5 +337,4 @@ else
     echo ""
     echo "When the script completes, you can then visit the OpenStack Dashboard"
     echo "at http://$PUB_IP, and contact other services at the usual ports."
-
 fi
