@@ -318,6 +318,9 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
 
     kill $TAIL_PID
 
+    # Echo commands
+    set -o xtrace
+
     if ssh_no_check -q stack@$PUB_IP "grep -q 'stack.sh failed' run.sh.log"; then
         exit 1
     fi
