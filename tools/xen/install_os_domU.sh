@@ -352,8 +352,7 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
 
     wait_for_log_to_appear
 
-    ssh_no_check stack@$PUB_IP 'tail -f run.sh.log' &
-
+    ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no stack@$PUB_IP 'tail -f run.sh.log' &
     TAIL_PID=$!
 
     function kill_tail() {
