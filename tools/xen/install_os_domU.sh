@@ -363,7 +363,7 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     # Let Ctrl-c kill tail and exit
     trap kill_tail SIGINT
 
-    add_on_exit "kill -9 $TAIL_PID"
+    add_on_exit "kill -9 $TAIL_PID || true"
 
     wait_for_stack_sh_to_finish
 
