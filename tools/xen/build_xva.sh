@@ -19,7 +19,7 @@ source xenrc
 set -o xtrace
 
 # Include onexit commands
-source %TOP_DIR/scripts/on-exit.sh
+. %TOP_DIR/scripts/on-exit.sh
 
 GUEST_NAME="$1"
 
