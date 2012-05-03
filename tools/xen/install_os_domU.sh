@@ -17,7 +17,7 @@ TOP_DIR=$(cd $(dirname "$0") && pwd)
 . $TOP_DIR/../../functions
 
 # Include onexit commands
-. %TOP_DIR/scripts/on-exit.sh
+. $TOP_DIR/scripts/on-exit.sh
 
 # Source params - override xenrc params in your localrc to suit your taste
 source xenrc
