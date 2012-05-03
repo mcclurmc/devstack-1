@@ -16,6 +16,9 @@ TOP_DIR=$(cd $(dirname "$0") && pwd)
 # Source lower level functions
 . $TOP_DIR/../../functions
 
+# Include onexit commands
+source %TOP_DIR/scripts/on-exit.sh
+
 # Source params - override xenrc params in your localrc to suit your taste
 source xenrc
 
@@ -251,8 +254,10 @@ xe vm-start vm="$GUEST_NAME"
  
 function find_ip_by_name() {
   local guest_name="$1"
-  local period="$2"
-  while true
+  local period=10
+  max_tries=10
+  i=0
+  while [ $i -lt $max_tries ]
   do
     devstackip=$(xe vm-list --minimal \
                  name-label=$guest_name \
@@ -260,20 +265,63 @@ function find_ip_by_name() {
     if [ -z "$devstackip" ]
     then
       sleep $period
+      ((i++))
     else
       echo $devstackip
       break
     fi
   done
+
+  echo "Timed out waiting for devstack ip address"
+  exit 11
 }
 
 if [ $PUB_IP == "dhcp" ]; then
-    PUB_IP=$(find_ip_by_name $GUEST_NAME 10)
+    PUB_IP=$(find_ip_by_name $GUEST_NAME)
 fi
 export OPENSTACK_GUEST_IP=$PUB_IP
 
 function ssh_no_check() {
     ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$@"
+}
+
+function wait_for_log_to_appear() {
+  max_tries=60
+  i=0
+  while [ $i -lt $max_tries ]
+  do
+    if ssh_no_check -q stack@$PUB_IP "[ -e run.sh.log ]"
+      break
+    fi
+    sleep 10
+    ((i++))
+  done
+
+  echo "Timed out waiting for log to appear"
+  exit 12
+}
+
+function wait_for_stack_sh_to_finish() {
+  echo "Waiting stack.sh to finish..."
+
+  # no need to output the commands now
+  set +o xtrace
+
+  max_tries=600
+  i=0
+  while [ $i -lt $max_tries ]
+  do
+    if ssh_no_check -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"
+      # Echo commands again
+      set -o xtrace
+      break
+    fi
+    sleep 10
+    ((i++))
+  done
+
+  echo "Timed out waiting for stack.sh to finish"
+  exit 13
 }
 
 # If we have copied our ssh credentials, use ssh to monitor while the installation runs
@@ -291,9 +339,7 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     echo
     echo "Just CTRL-C at any time to stop tailing."
 
-    while ! ssh_no_check -q stack@$PUB_IP "[ -e run.sh.log ]"; do
-      sleep 10
-    done
+    wait_for_log_to_appear
 
     ssh_no_check stack@$PUB_IP 'tail -f run.sh.log' &
 
@@ -303,23 +349,14 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
         kill $TAIL_PID
         exit 1
     }
-
     # Let Ctrl-c kill tail and exit
     trap kill_tail SIGINT
 
-    echo "Waiting stack.sh to finish..."
+    add_on_exit "kill -9 $TAIL_PID"
 
-    # no need to output the commands now
-    set +o xtrace
-
-    while ! ssh_no_check -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"; do
-        sleep 10
-    done
+    wait_for_stack_sh_to_finish
 
     kill $TAIL_PID
-
-    # Echo commands
-    set -o xtrace
 
     if ssh_no_check -q stack@$PUB_IP "grep -q 'stack.sh failed' run.sh.log"; then
         exit 1
