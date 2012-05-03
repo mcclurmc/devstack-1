@@ -300,6 +300,7 @@ function wait_for_log_to_appear() {
     fi
 
     if ssh_no_check -q stack@$PUB_IP "[ -e run.sh.log ]"
+    then
       break
     fi
     sleep 10
@@ -324,6 +325,7 @@ function wait_for_stack_sh_to_finish() {
     fi
 
     if ssh_no_check -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"
+    then
       # Echo commands again
       set -o xtrace
       break
