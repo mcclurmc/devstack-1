@@ -257,8 +257,14 @@ function find_ip_by_name() {
   local period=10
   max_tries=10
   i=0
-  while [ $i -lt $max_tries ]
+  while true
   do
+    if [ $i -ge $max_tries ]
+    then
+      echo "Timed out waiting for devstack ip address"
+      exit 11
+    fi
+
     devstackip=$(xe vm-list --minimal \
                  name-label=$guest_name \
                  params=networks | sed -ne 's,^.*3/ip: \([0-9.]*\).*$,\1,p')
@@ -271,9 +277,6 @@ function find_ip_by_name() {
       break
     fi
   done
-
-  echo "Timed out waiting for devstack ip address"
-  exit 11
 }
 
 if [ $PUB_IP == "dhcp" ]; then
@@ -288,17 +291,20 @@ function ssh_no_check() {
 function wait_for_log_to_appear() {
   max_tries=60
   i=0
-  while [ $i -lt $max_tries ]
+  while true
   do
+    if [ $i -ge $max_tries ]
+    then
+      echo "Timed out waiting for log to appear"
+      exit 12
+    fi
+
     if ssh_no_check -q stack@$PUB_IP "[ -e run.sh.log ]"
       break
     fi
     sleep 10
     ((i++))
   done
-
-  echo "Timed out waiting for log to appear"
-  exit 12
 }
 
 function wait_for_stack_sh_to_finish() {
@@ -309,8 +315,14 @@ function wait_for_stack_sh_to_finish() {
 
   max_tries=600
   i=0
-  while [ $i -lt $max_tries ]
+  while true
   do
+    if [ $i -ge $max_tries ]
+    then
+      echo "Timed out waiting for stack.sh to finish"
+      exit 13
+    fi
+
     if ssh_no_check -q stack@$PUB_IP "tail run.sh.log | grep -q 'stack.sh completed in'"
       # Echo commands again
       set -o xtrace
@@ -319,9 +331,6 @@ function wait_for_stack_sh_to_finish() {
     sleep 10
     ((i++))
   done
-
-  echo "Timed out waiting for stack.sh to finish"
-  exit 13
 }
 
 # If we have copied our ssh credentials, use ssh to monitor while the installation runs
