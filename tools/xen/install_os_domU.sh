@@ -357,7 +357,7 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
     TAIL_PID=$!
 
     function kill_tail() {
-        kill $TAIL_PID
+        kill -9 $TAIL_PID
         exit 1
     }
     # Let Ctrl-c kill tail and exit
@@ -367,7 +367,7 @@ if [ "$WAIT_TILL_LAUNCH" = "1" ]  && [ -e ~/.ssh/id_rsa.pub  ] && [ "$COPYENV" =
 
     wait_for_stack_sh_to_finish
 
-    kill $TAIL_PID
+    kill -9 $TAIL_PID
 
     if ssh_no_check -q stack@$PUB_IP "grep -q 'stack.sh failed' run.sh.log"; then
         exit 1
